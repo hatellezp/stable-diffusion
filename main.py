@@ -7,9 +7,11 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
-from beta_scheduler import make_beta_schedule, make_alpha_from_beta
+from beta_scheduler import make_beta_schedule, make_alpha_from_beta, SCHEDULE_METHODS
 from forward_diffusion import forward_diffusion
 from utils import show_images, show_tensor_image, make_full_noise_sample
+
+from tqdm import tqdm
 
 def diffuse_image(image: np.ndarray,
                   timestep: int,
@@ -29,13 +31,13 @@ def f2():
         l = list(range(1, T + 1))
         for schedule in schedules:
             betas = make_beta_schedule(schedule, timestep_nbr=T)
-            alphas, alphas_bar, alphas_bar_sqrt, alphas_bar_one_minus = make_alpha_from_beta(betas)
+            hyperparameters = make_alpha_from_beta(betas)
 
             axs[idx, 0].plot(l, betas, label=schedule)
-            axs[idx, 1].plot(l, alphas, label=schedule)
-            axs[idx, 2].plot(l, alphas_bar, label=schedule)
-            axs[idx, 3].plot(l, alphas_bar_sqrt, label=schedule)
-            axs[idx, 4].plot(l, alphas_bar_one_minus, label=schedule)
+            axs[idx, 1].plot(l, hyperparameters['alphas'], label=schedule)
+            axs[idx, 2].plot(l, hyperparameters['alphas_bar'], label=schedule)
+            axs[idx, 3].plot(l, hyperparameters['alphas_bar_sqrt'], label=schedule)
+            axs[idx, 4].plot(l, hyperparameters['alphas_bar_one_minus'], label=schedule)
 
 
 
@@ -65,50 +67,8 @@ def f3():
     show_tensor_image(noise)
 
 
-def f4():
-    plt.figure(figsize=(15,15))
-    plt.axis('off')
-
-    num_images = 10
-    T = 300
-    stepsize = int(T/num_images)
-    DATASETS_PATH = "../../../Datasets"
-    IMG_SIZE = 128
-    BATCH_SIZE = 64
-
-    data_transforms = [
-        transforms.Resize((IMG_SIZE, IMG_SIZE)),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(), # Scales data into [0,1]
-        transforms.Lambda(lambda t: (t * 2) - 1) # Scale between [-1, 1]
-    ]
-    data_transform = transforms.Compose(data_transforms)
-    data = torchvision.datasets.OxfordIIITPet(root=DATASETS_PATH, download=True, transform=data_transform)
-    dataloader = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
-
-    x0 = next(iter(dataloader))[0]
-
-
-
-
-    betas = make_beta_schedule('cosine', timestep_nbr=T, to_numpy=False)
-    alphas, alphas_bar, alphas_bar_sqrt, alphas_bar_one_minus = make_alpha_from_beta(betas, to_numpy=False)
-
-
-
-
-    for idx in range(0, T, stepsize):
-        t = torch.Tensor([idx]).type(torch.int64)
-        plt.subplot(1, num_images+1, int(idx/stepsize) + 1)
-        img, noise = forward_diffusion(x0, idx, alphas_bar_sqrt, alphas_bar_one_minus)
-        show_tensor_image(img)
-    plt.show()
-
-
-
-
 if __name__ == '__main__':
     # f1()
     # f2()
     # f3()
-    f4()
+    f4(num_images=30, T=500)

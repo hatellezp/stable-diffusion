@@ -4,6 +4,10 @@ from typing import Tuple
 from utils import get_value_and_reshape
 
 
+# The forward difussion processus that we use is derived from the DDPM
+# paper: https://arxiv.org/pdf/2006.11239.pdf
+
+
 def forward_diffusion(x0: torch.Tensor,
                       timestep: int,
                       alphas_bar_sqrt: torch.Tensor,

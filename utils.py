@@ -3,7 +3,23 @@ import torch
 from torchvision import transforms
 import numpy as np
 
+import PIL
+from PIL import Image
+
 from typing import Tuple
+
+
+def image_from_path_to_tensor(path: str, resize_h: int, resize_w: int, random_flip: bool = True) -> torch.Tensor:
+
+
+    data_transforms = [transforms.Resize((resize_h, resize_w))]
+    if random_flip:
+        data_transforms.append(transforms.RandomHorizontalFlip())
+    data_transforms.extend([transforms.ToTensor(), transforms.Lambda(lambda t: (t * 2) - 1)])
+    data_transform = transforms.Compose(data_transforms)
+
+    image = Image.open(path).convert("RGB")
+    return data_transform(image)
 
 
 def show_images(dataset: torch.utils.data.Dataset, num_samples: int = 20, cols: int = 4, show: bool = False) -> None:
@@ -19,7 +35,7 @@ def show_images(dataset: torch.utils.data.Dataset, num_samples: int = 20, cols: 
         plt.show()
 
 
-def show_tensor_image(image: torch.Tensor, show: bool = False) -> None:
+def show_tensor_image(image: torch.Tensor, show: bool = False, ax=None, label=None) -> None:
     reverse_transforms = transforms.Compose([
         transforms.Lambda(lambda t: (t + 1) / 2),
         transforms.Lambda(lambda t: t.permute(1, 2, 0)), # CHW to HWC
@@ -31,7 +47,11 @@ def show_tensor_image(image: torch.Tensor, show: bool = False) -> None:
     # Take first image of batch
     if len(image.shape) == 4:
         image = image[0, :, :, :]
-    plt.imshow(reverse_transforms(image))
+
+    if ax is None:
+        plt.imshow(reverse_transforms(image))
+    else:
+        ax.imshow(reverse_transforms(image))
 
     if show:
         plt.show()
