@@ -8,18 +8,6 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from beta_scheduler import make_beta_schedule, make_alpha_from_beta, SCHEDULE_METHODS
-from forward_diffusion import forward_diffusion
-from utils import show_images, show_tensor_image, make_full_noise_sample
-
-from tqdm import tqdm
-
-def diffuse_image(image: np.ndarray,
-                  timestep: int,
-                  beta_schedule_type: Tuple[float, ...],
-                  mean: Tuple[float, ...],
-                  variance: Tuple[float, ...]) -> np.ndarray:
-    pass
-
 
 def f2():
     schedules = ['linear', 'cosine', 'sqrt_linear', 'sqrt','log', 'linear_cosine', 'log_cosine']
@@ -56,19 +44,5 @@ def f2():
     plt.show()
 
 
-def f1():
-    DATASETS_PATH = "../../../Datasets"
-
-    data = torchvision.datasets.OxfordIIITPet(root=DATASETS_PATH, download=True)
-    show_images(data)
-
-def f3():
-    noise = make_full_noise_sample((3, 32, 32))
-    show_tensor_image(noise)
-
-
 if __name__ == '__main__':
-    # f1()
-    # f2()
-    # f3()
-    f4(num_images=30, T=500)
+    print('bob')

@@ -22,20 +22,24 @@ def image_from_path_to_tensor(path: str, resize_h: int, resize_w: int, random_fl
     return data_transform(image)
 
 
-def show_images(dataset: torch.utils.data.Dataset, num_samples: int = 20, cols: int = 4, show: bool = False) -> None:
+def show_images(dataset: torch.utils.data.Dataset,
+                num_samples: int = 20,
+                cols: int = 4,
+                show_plot: bool = True,
+                figsize: Tuple[int, int] = (20, 20)) -> None:
     """ Plots some samples from the dataset """
-    plt.figure(figsize=(15,15))
+    plt.figure(figsize=figsize)
     for i, img in enumerate(dataset):
         if i == num_samples:
             break
         plt.subplot(int(num_samples/cols) + 1, cols, i + 1)
         plt.imshow(img[0])
 
-    if show:
+    if show_plot:
         plt.show()
 
 
-def show_tensor_image(image: torch.Tensor, show: bool = False, ax=None, label=None) -> None:
+def show_tensor_image(image: torch.Tensor, show_plot: bool = True, ax=None, label=None) -> None:
     reverse_transforms = transforms.Compose([
         transforms.Lambda(lambda t: (t + 1) / 2),
         transforms.Lambda(lambda t: t.permute(1, 2, 0)), # CHW to HWC
@@ -53,7 +57,7 @@ def show_tensor_image(image: torch.Tensor, show: bool = False, ax=None, label=No
     else:
         ax.imshow(reverse_transforms(image))
 
-    if show:
+    if show_plot:
         plt.show()
 
 
