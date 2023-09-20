@@ -3,7 +3,7 @@ import torch
 import torchvision
 
 from tqdm import tqdm
-from typing import Tuple
+from typing import List, Tuple
 
 from beta_scheduler import SCHEDULE_METHODS, make_alpha_from_beta, make_beta_schedule
 from forward_diffusion import forward_diffusion
@@ -42,7 +42,7 @@ def visualize_noise_adding_methods(
             img, _ = forward_diffusion(
                 image, timestep, hyperparameters['alphas_bar_sqrt'], hyperparameters['alphas_bar_one_minus']
             )
-            show_tensor_image(img, ax=axs[index, idx])
+            show_tensor_image(img, ax=axs[index, idx], show_plot=False)
 
         axs[index, 0].set_title(method)
 
@@ -82,7 +82,52 @@ def visualize_dataset_sample(
     show_images(data, num_samples=num_samples, cols=cols, show_plot=show_plot, figsize=figsize)
 
 
+def visualize_noise_mean_variance_schedules(timesteps: List[int] = None, show_plot: bool = True):
+    schedules = SCHEDULE_METHODS
+    if timesteps is None:
+        timesteps = [100, 1000, 10000]
+
+    schedules_length = len(schedules)
+    timesteps_length = len(timesteps)
+
+    _, axs = plt.subplots(timesteps_length, 5)
+
+
+    for idx in range(timesteps_length):
+
+        T = timesteps[idx]
+        l = list(range(1, T + 1))
+
+        for schedule in schedules:
+            betas = make_beta_schedule(schedule, timestep_nbr=T)
+            hyperparameters = make_alpha_from_beta(betas)
+
+            axs[idx, 0].plot(l, betas, label=schedule)
+            axs[idx, 1].plot(l, hyperparameters['alphas'], label=schedule)
+            axs[idx, 2].plot(l, hyperparameters['alphas_bar'], label=schedule)
+            axs[idx, 3].plot(l, hyperparameters['alphas_bar_sqrt'], label=schedule)
+            axs[idx, 4].plot(l, hyperparameters['alphas_bar_one_minus'], label=schedule)
+
+
+
+        if idx > 0:
+            axs[idx, 0].set_title(f"A time schedule with T={T}")
+
+    axs[0, 0].set_title(f"A time schedule with T={timesteps[0]}.\nbetas, smaller means more noise.")
+    axs[0, 1].set_title(f"1 - betas")
+    axs[0, 2].set_title(f"alphas bar")
+    axs[0, 3].set_title(f"sqrt(alphas bar)")
+    axs[0, 4].set_title(f"1 - (alphas bar)")
+
+    plt.legend()
+    if show_plot:
+        plt.show()
+
+
 if __name__ == '__main__':
     # visualize_noise_adding_methods()
     # visualize_full_noise()
-    visualize_dataset_sample('flowers')
+    # visualize_dataset_sample('flowers')
+    # visualize_noise_mean_variance_schedules()
+
+    print('Uncomment one of the lines in the `visualize.py` file to what ?? get this... visualize something !!!')

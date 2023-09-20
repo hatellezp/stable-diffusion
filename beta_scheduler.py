@@ -4,12 +4,23 @@ import torch
 
 from typing import Dict, Tuple
 
+from utils import ArrayOrTensor
 
-ArrayOrTensor = np.ndarray | torch.Tensor
-SCHEDULE_METHODS = ('linear', 'cosine', 'sqrt', 'sqrt_linear', 'log', 'linear_cosine', 'log_cosine', 'clipped_cosine')
+SCHEDULE_METHODS = (
+    'linear',
+    'cosine',
+    'sqrt',
+    'sqrt_linear',
+    'log',
+    'linear_cosine',
+    'log_cosine',
+    'clipped_cosine'
+)
 
 # Heavily inspired by runwayml/stable-diffusion. Most of methods are already mainstream,
-# the relaxed cosine have a more slowly growing slope.
+# the relaxed cosine methods (`log_cosine` and `linear_cosine`) have a more slowly
+# growing slope.
+# `clipped_cosine` avoids to add almost no noise at the end by limiting the size of beta
 # [DDPM](https://arxiv.org/pdf/2006.11239.pdf) set its range of betas to:
 #   - beta_1 = 1e-4
 #   - beta_T = 2e-2
@@ -71,7 +82,11 @@ def make_beta_schedule(schedule_type: str,
     return betas.numpy() if to_numpy else betas
 
 
-def make_alpha_from_beta(betas: ArrayOrTensor, to_numpy: bool = True, device: str = 'cpu') -> Dict[str, ArrayOrTensor]:
+def make_alpha_from_beta(
+        betas: ArrayOrTensor,
+        to_numpy: bool = True,
+        device: str = 'cpu') -> Dict[str, ArrayOrTensor]:
+
     if isinstance(betas, np.ndarray) or isinstance(betas, torch.Tensor):
         module = np if isinstance(betas, np.ndarray) else torch
 
@@ -81,7 +96,6 @@ def make_alpha_from_beta(betas: ArrayOrTensor, to_numpy: bool = True, device: st
         alphas_bar_one_minus = 1. - alphas_bar
 
         # define beta_bar here (from the DDPM paper https://arxiv.org/pdf/2006.11239.pdf)
-
         # I do not like this... find a better way to create the values
         betas_bar = [betas[0]]
         for idx in range(1, len(betas)):

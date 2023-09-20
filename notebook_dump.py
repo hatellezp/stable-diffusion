@@ -1,18 +1,23 @@
+import math
+import numpy as np
 import torch
+import torch.nn.functional as F
 import torchvision
 
-import torch.nn.functional as F
 
-from torch import nn
-from torchvision import transforms
-from torch.utils.data import DataLoader
-from torch.optim import Adam
-
-import numpy as np
 from matplotlib import pyplot as plt
+from torch import nn
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchvision import transforms
 from tqdm import tqdm
-import math
 
+
+DATASETS_PATH = "../../../Datasets"
+CHECKPOINTS_PATH = "../../../Checkpoints"
+T = 300
+IMG_SIZE = 64
+BATCH_SIZE = 128
 
 
 def show_images(dataset, num_samples=20, cols=4):
@@ -24,15 +29,10 @@ def show_images(dataset, num_samples=20, cols=4):
         plt.subplot(int(num_samples/cols) + 1, cols, i + 1)
         plt.imshow(img[0])
 
-DATASETS_PATH = "../../../Datasets"
-CHECKPOINTS_PATH = "../../../Checkpoints"
-
-data = torchvision.datasets.OxfordIIITPet(root=DATASETS_PATH, download=True)
-show_images(data)
-
 
 def linear_beta_schedule(timesteps, start=0.0001, end=0.02):
     return torch.linspace(start, end, timesteps)
+
 
 def get_index_from_list(vals, t, x_shape):
     """
@@ -42,6 +42,7 @@ def get_index_from_list(vals, t, x_shape):
     batch_size = t.shape[0]
     out = vals.gather(-1, t.cpu())
     return out.reshape(batch_size, *((1,) * (len(x_shape) - 1))).to(t.device)
+
 
 def forward_diffusion_sample(x_0, t, device="cpu"):
     """
@@ -56,27 +57,6 @@ def forward_diffusion_sample(x_0, t, device="cpu"):
     # mean + variance
     return alphas_mean_t.to(device) * x_0.to(device) \
     + sqrt_one_minus_alphas_cumprod_t.to(device) * noise.to(device), noise.to(device)
-
-
-
-
-# Define beta schedule
-T = 300
-betas = linear_beta_schedule(timesteps=T)
-
-# Pre-calculate different terms for closed form
-alphas = 1. - betas
-alphas_cumprod = torch.cumprod(alphas, axis=0)
-alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
-sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
-alphas_mean = torch.sqrt(alphas_cumprod)
-sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
-posterior_variance = betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
-
-
-IMG_SIZE = 64
-BATCH_SIZE = 128
-
 
 
 def load_transformed_dataset(root=DATASETS_PATH):
@@ -94,6 +74,8 @@ def load_transformed_dataset(root=DATASETS_PATH):
     test = torchvision.datasets.OxfordIIITPet(root=root, download=True,
                                          transform=data_transform, split='test')
     return torch.utils.data.ConcatDataset([train, test])
+
+
 def show_tensor_image(image):
     reverse_transforms = transforms.Compose([
         transforms.Lambda(lambda t: (t + 1) / 2),
@@ -107,26 +89,6 @@ def show_tensor_image(image):
     if len(image.shape) == 4:
         image = image[0, :, :, :]
     plt.imshow(reverse_transforms(image))
-
-
-
-data = load_transformed_dataset()
-dataloader = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
-
-
-# Simulate forward diffusion
-image = next(iter(dataloader))[0]
-
-plt.figure(figsize=(15,15))
-plt.axis('off')
-num_images = 10
-stepsize = int(T/num_images)
-
-for idx in range(0, T, stepsize):
-    t = torch.Tensor([idx]).type(torch.int64)
-    plt.subplot(1, num_images+1, int(idx/stepsize) + 1)
-    img, noise = forward_diffusion_sample(image, t)
-    show_tensor_image(img)
 
 
 class Block(nn.Module):
@@ -226,9 +188,6 @@ class SimpleUnet(nn.Module):
             x = up(x, t)
         return self.output(x)
 
-model = SimpleUnet()
-print("Num params: ", sum(p.numel() for p in model.parameters()))
-
 
 def get_loss(model, x_0, t):
     x_noisy, noise = forward_diffusion_sample(x_0, t, device)
@@ -263,6 +222,7 @@ def sample_timestep(x, t):
         noise = torch.randn_like(x)
         return model_mean + torch.sqrt(posterior_variance_t) * noise
 
+
 @torch.no_grad()
 def sample_plot_image():
     # Sample noise
@@ -284,34 +244,36 @@ def sample_plot_image():
     plt.show()
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model.to(device)
-optimizer = Adam(model.parameters(), lr=0.001)
-epochs = 10 # Try more!
-
-from tqdm import tqdm
-for epoch in range(epochs):
-    for step, batch in enumerate(tqdm(dataloader)):
-      optimizer.zero_grad()
-
-      t = torch.randint(0, T, (BATCH_SIZE,), device=device).long()
-      loss = get_loss(model, batch[0], t)
-      loss.backward()
-      optimizer.step()
-
-      if epoch % 5 == 0 and step == 0:
-        print(f"Epoch {epoch} | step {step:03d} Loss: {loss.item()} ")
-        sample_plot_image()
+if __name__ == '__main__':
+    betas = linear_beta_schedule(timesteps=T)
+    alphas = 1. - betas
+    alphas_cumprod = torch.cumprod(alphas, axis=0)
+    alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value=1.0)
+    sqrt_recip_alphas = torch.sqrt(1.0 / alphas)
+    alphas_mean = torch.sqrt(alphas_cumprod)
+    sqrt_one_minus_alphas_cumprod = torch.sqrt(1. - alphas_cumprod)
+    posterior_variance = betas * (1. - alphas_cumprod_prev) / (1. - alphas_cumprod)
 
 
+    data = load_transformed_dataset()
+    dataloader = DataLoader(data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
+    model = SimpleUnet()
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model.to(device)
+    optimizer = Adam(model.parameters(), lr=0.001)
+    epochs = 10 # Try more!
 
+    for epoch in range(epochs):
+        for step, batch in enumerate(tqdm(dataloader)):
+            optimizer.zero_grad()
 
+            t = torch.randint(0, T, (BATCH_SIZE,), device=device).long()
+            loss = get_loss(model, batch[0], t)
+            loss.backward()
+            optimizer.step()
 
-
-
-
-
-
-
+            if epoch % 5 == 0 and step == 0:
+                print(f"Epoch {epoch} | step {step:03d} Loss: {loss.item()} ")
+                sample_plot_image()
