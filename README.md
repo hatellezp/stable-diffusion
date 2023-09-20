@@ -1,5 +1,8 @@
 # Stable Difussion Personal Implementation
 
+
+THIS IS A WIP! Nothing is still of up to use or even read.
+
 ## API
 
 what do we need here:
