@@ -9,7 +9,7 @@ from utils import get_value_and_reshape
 
 
 def forward_diffusion(x0: torch.Tensor,
-                      timestep: int,
+                      timestep: int | torch.Tensor,
                       alphas_bar_sqrt: torch.Tensor,
                       alphas_bar_one_minus: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
 

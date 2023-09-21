@@ -39,8 +39,8 @@ class UNetBlock(nn.Module):
         # Group Normalization adds a considerable speed up to training, see https://arxiv.org/abs/1803.08494
         # While near enough Batch Normalization, it suffer from a litte disavantage in generalization.
         if use_gn:
-            self.norm1 = nn.GroupNorm(32, out_ch)
-            self.norm2 = nn.GroupNorm(32, out_ch)
+            self.norm1 = nn.GroupNorm(gn_size, out_ch)
+            self.norm2 = nn.GroupNorm(gn_size, out_ch)
         else:
             self.norm1 = nn.BatchNorm2d(out_ch)
             self.norm2 = nn.BatchNorm2d(out_ch)
