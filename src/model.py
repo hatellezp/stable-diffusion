@@ -135,6 +135,10 @@ class SimpleUnet(nn.Module):
         self.output_layer = nn.Conv2d(self.up_channels[-1], out_dim, 1)
 
     def forward(self, x, timestep):
+
+        if not isinstance(timestep, torch.Tensor):
+            timestep = torch.Tensor([timestep]).type(torch.int64)
+
         # 1. Embedd time
         t = self.time_mlp(timestep)
 

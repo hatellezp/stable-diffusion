@@ -7,7 +7,7 @@ from torchvision import transforms
 from typing import Tuple
 
 ArrayOrTensor = np.ndarray | torch.Tensor
-
+IntOrTensor = int | torch.Tensor
 
 def image_from_path_to_tensor(
         path: str,

@@ -93,7 +93,10 @@ def make_alpha_from_beta(
         alphas = 1. - betas
         alphas_bar = module.cumprod(alphas, axis=0)
         alphas_bar_sqrt = module.sqrt(alphas_bar)
+        alphas_bar_sqrt_inverse = 1. / alphas_bar_sqrt
         alphas_bar_one_minus = 1. - alphas_bar
+        alphas_bar_one_minus_sqrt = module.sqrt(alphas_bar_one_minus)
+        alphas_ratio = alphas_bar_one_minus / alphas_bar_one_minus_sqrt
 
         # define beta_bar here (from the DDPM paper https://arxiv.org/pdf/2006.11239.pdf)
         # I do not like this... find a better way to create the values
@@ -116,7 +119,10 @@ def make_alpha_from_beta(
         alphas = alphas.numpy()
         alphas_bar = alphas_bar.numpy()
         alphas_bar_sqrt = alphas_bar_sqrt.numpy()
+        alphas_bar_sqrt_inverse = alphas_bar_sqrt_inverse.numpy()
         alphas_bar_one_minus = alphas_bar_one_minus.numpy()
+        alphas_bar_one_minus_sqrt = alphas_bar_one_minus_sqrt.numpy()
+        alphas_ratio = alphas_ratio.numpy()
         betas_bar = betas_bar.numpy()
         betas_bar_sqrt = betas_bar_sqrt.numpy()
 
@@ -124,7 +130,10 @@ def make_alpha_from_beta(
         'alphas': alphas,
         'alphas_bar': alphas_bar,
         'alphas_bar_sqrt': alphas_bar_sqrt,
+        'alphas_bar_sqrt_inverse': alphas_bar_sqrt_inverse,
         'alphas_bar_one_minus': alphas_bar_one_minus,
+        'alphas_bar_one_minus_sqrt': alphas_bar_one_minus_sqrt,
+        'alphas_ration': alphas_ratio,
         'betas': betas,
         'betas_sqrt': betas_sqrt,
         'betas_bar': betas_bar,
