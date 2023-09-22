@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torchvision
 
 from PIL import Image
+from torch import nn
 from torchvision import transforms
-from typing import Tuple
+from typing import Dict, Tuple
 
-ArrayOrTensor = np.ndarray | torch.Tensor
-IntOrTensor = int | torch.Tensor
+from .tensor_types import IntOrTensor
+
 
 def image_from_path_to_tensor(
         path: str,
@@ -48,6 +50,24 @@ def show_images(dataset: torch.utils.data.Dataset,
         plt.show()
 
 
+def default_image_to_tensor_transform(
+        resize_h: int,
+        resize_w: int,
+        random_flip: bool = True) -> torch.Tensor:
+
+    # 1. Define transformation for the image.
+    data_transforms = [transforms.Resize((resize_h, resize_w))]
+    if random_flip:
+        data_transforms.append(transforms.RandomHorizontalFlip())
+    data_transforms.extend([
+        transforms.ToTensor(),
+        transforms.Lambda(lambda t: (t * 2) - 1)
+    ])
+    data_transform = transforms.Compose(data_transforms)
+
+    return data_transform
+
+
 def default_tensor_to_image_transform():
     return transforms.Compose([
         transforms.Lambda(lambda t: (t + 1) / 2),
@@ -84,7 +104,8 @@ def show_tensor_image(
 def make_full_noise_sample(
         shape: Tuple[int, ...],
         manual_seed: int = None,
-        iterate: int = None) -> torch.Tensor:
+        iterate: int = None,
+        device: str = None) -> torch.Tensor:
 
     # You can guaranteed reproducibilty of your experiment by forcing a manual
     # seed for the random generator in torch. For a little flexibility in this
@@ -97,13 +118,14 @@ def make_full_noise_sample(
     if iterate and manual_seed:
         for _ in range(iterate - 1): torch.randn(shape)
 
-    return torch.randn(shape)
+    return torch.randn(shape, device=device)
 
 
 def get_value_and_reshape(
         values: torch.Tensor,
-        timestep: ArrayOrTensor,
-        sample_shape: Tuple[int, ...]) -> torch.Tensor:
+        timestep: IntOrTensor,
+        sample_shape: Tuple[int, ...],
+        device: str = None) -> torch.Tensor:
 
     if not (isinstance(timestep, int) or isinstance(timestep, torch.Tensor)):
         raise ValueError(
@@ -113,51 +135,34 @@ def get_value_and_reshape(
     if isinstance(timestep, int):
         timestep = torch.Tensor([timestep]).type(torch.int64)
 
+    if device is not None:
+        values = values.to(device)
+        timestep = timestep.to(device)
+
     batch_size = timestep.shape[0]
     good_value = values.gather(-1, timestep)
 
     return good_value.reshape(batch_size, *((1,) * (len(sample_shape) - 1)))
 
 
+def gather_data(dataset: str,
+                dataset_path: str = "../../../Datasets",
+                download: bool = True,
+                transform: transforms.Compose = None) -> torch.utils.data.Dataset:
 
+    if dataset == 'oxford':
+        data = torchvision.datasets.OxfordIIITPet(root=dataset_path, download=download, transform=transform)
+    elif dataset == 'cifar10':
+        data = torchvision.datasets.CIFAR10(root=dataset_path, download=download, transform=transform)
+    elif dataset == 'cifar100':
+        data = torchvision.datasets.CIFAR100(root=dataset_path, download=download, transform=transform)
+    elif dataset == 'mnist':
+        data = torchvision.datasets.MNIST(root=dataset_path, download=download, transform=transform)
+    elif dataset == 'fashionmnist':
+        data = torchvision.datasets.FashionMNIST(root=dataset_path, download=download, transform=transform)
+    elif dataset == 'flowers':
+        data = torchvision.datasets.Flowers102(root=dataset_path, download=download, transform=transform)
+    else:
+        raise ValueError(f"Unexpected dataset: {dataset}")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def sample_plot_image(IMG_SIZE, device, T):
-    # Sample noise
-    img_size = IMG_SIZE
-    img = torch.randn((1, 3, img_size, img_size), device=device)
-    plt.figure(figsize=(15,15))
-    plt.axis('off')
-    num_images = 10
-    stepsize = int(T/num_images)
-
-    for i in range(0,T)[::-1]:
-        t = torch.full((1,), i, device=device, dtype=torch.long)
-        img = sample_timestep(img, t)
-        # Edit: This is to maintain the natural range of the distribution
-        img = torch.clamp(img, -1.0, 1.0)
-        if i % stepsize == 0:
-            plt.subplot(1, num_images, int(i/stepsize)+1)
-            show_tensor_image(img.detach().cpu())
-    plt.show()
-
-
+    return data

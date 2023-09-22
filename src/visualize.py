@@ -5,9 +5,9 @@ import torchvision
 from tqdm import tqdm
 from typing import List, Tuple
 
-from beta_scheduler import SCHEDULE_METHODS, make_alpha_from_beta, make_beta_schedule
-from forward_diffusion import forward_diffusion
-from utils import image_from_path_to_tensor, show_tensor_image, make_full_noise_sample, show_images
+from .beta_scheduler import SCHEDULE_METHODS, make_alpha_from_beta, make_beta_schedule
+from .forward_diffusion import forward_diffusion_ddpm
+from .utils import image_from_path_to_tensor, show_tensor_image, make_full_noise_sample, show_images
 
 
 def visualize_noise_adding_methods(
@@ -33,13 +33,13 @@ def visualize_noise_adding_methods(
         print('=================================')
         print(f'Method: {method}')
 
-        betas = make_beta_schedule(method, timestep_nbr=T, to_numpy=False)
+        betas = make_beta_schedule(method, total_timesteps=T, to_numpy=False)
         hyperparameters = make_alpha_from_beta(betas, to_numpy=False, device=device)
         print("Hyperparameters created")
 
         for idx in tqdm(range(0, num_images), unit='img'):
             timestep = idx*stepsize
-            img, _ = forward_diffusion(
+            img, _ = forward_diffusion_ddpm(
                 image, timestep, hyperparameters['alphas_bar_sqrt'], hyperparameters['alphas_bar_one_minus']
             )
             show_tensor_image(img, ax=axs[index, idx], show_plot=False)
@@ -99,7 +99,7 @@ def visualize_noise_mean_variance_schedules(timesteps: List[int] = None, show_pl
         l = list(range(1, T + 1))
 
         for schedule in schedules:
-            betas = make_beta_schedule(schedule, timestep_nbr=T)
+            betas = make_beta_schedule(schedule, total_timesteps=T)
             hyperparameters = make_alpha_from_beta(betas)
 
             axs[idx, 0].plot(l, betas, label=schedule)

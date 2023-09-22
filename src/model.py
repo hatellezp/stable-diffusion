@@ -3,9 +3,10 @@ import torch
 
 from torch import nn
 from typing import Tuple
+from pathlib import Path
 
 
-# This is not entirely true...
+# The statement below is not entirely true...
 # Following the structure from 'U-Net for Brain MRI' in pytorch
 # https://pytorch.org/hub/mateuszbuda_brain-segmentation-pytorch_unet/
 
@@ -59,7 +60,7 @@ class UNetBlock(nn.Module):
         h = h + time_emb
 
         # 4. Second Conv
-        h = self.bnorm2(self.relu(self.conv2(h)))
+        h = self.norm2(self.relu(self.conv2(h)))
 
         # 5. Down or Upsample
         return self.transform(h)
@@ -98,7 +99,8 @@ class SimpleUnet(nn.Module):
                  image_channels: int = 3,
                  schedule: Tuple[int, ...] = (64, 128, 256, 512, 1024),
                  out_dim: int = 3,
-                 time_emb_dim: int = 32):
+                 time_emb_dim: int = 32,
+                 device: str = None):
         super().__init__()
 
         self.image_channels = image_channels
@@ -107,6 +109,7 @@ class SimpleUnet(nn.Module):
         self.out_dim = out_dim
         self.time_emb_dim = time_emb_dim
         self.trajectory_length = len(schedule)
+        self.device = device
 
         # 1. Define the time embedding layer.
         self.time_mlp = nn.Sequential(
@@ -138,6 +141,8 @@ class SimpleUnet(nn.Module):
 
         if not isinstance(timestep, torch.Tensor):
             timestep = torch.Tensor([timestep]).type(torch.int64)
+        if self.device is not None:
+            timestep = timestep.to(self.device)
 
         # 1. Embedd time
         t = self.time_mlp(timestep)
@@ -161,3 +166,20 @@ class SimpleUnet(nn.Module):
 
         # 5. Return the output layer result.
         return self.output_layer(x)
+
+    @staticmethod
+    def from_pretrained(
+        parameters_path: str | Path,
+        image_channels: int = 3,
+        schedule: Tuple[int, ...] = (64, 128, 256, 512, 1024),
+        out_dim: int = 3,
+        time_emb_dim: int = 32,
+        device: str = None) -> 'SimpleUnet':
+
+        model = SimpleUnet(image_channels=image_channels, schedule=schedule, out_dim=out_dim, time_emb_dim=time_emb_dim, device=device)
+        model.load_state_dict(torch.load(parameters_path))
+
+        return model
+
+    def save_state_dict(self, parameters_path: str | Path) -> None:
+        torch.save(self.state_dict(), parameters_path)

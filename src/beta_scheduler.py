@@ -1,10 +1,9 @@
-import math
 import numpy as np
 import torch
 
-from typing import Dict, Tuple
+from typing import Dict
 
-from utils import ArrayOrTensor
+from .tensor_types import ArrayOrTensor
 
 SCHEDULE_METHODS = (
     'linear',
@@ -26,20 +25,21 @@ SCHEDULE_METHODS = (
 #   - beta_T = 2e-2
 # with T = 1000
 def make_beta_schedule(schedule_type: str,
-                       timestep_nbr: int = 1000,
+                       total_timesteps: int = 1000,
                        linear_start: float = 1e-4,
                        linear_end: float = 2e-2,
                        cosine_s: float = 4e-3,
                        cosine_clip: float = 4e-2,
-                       to_numpy: bool = True) -> np.ndarray:
+                       to_numpy: bool = False,
+                       device: str = None) -> np.ndarray:
 
     if schedule_type not in SCHEDULE_METHODS:
         raise ValueError(f"schedule_type '{schedule_type}' unknown.")
 
     if schedule_type == "linear":
-        betas = torch.linspace(linear_start, linear_end, timestep_nbr, dtype=torch.float64)
+        betas = torch.linspace(linear_start, linear_end, total_timesteps, dtype=torch.float32)
     elif schedule_type == "cosine":
-        timesteps = torch.arange(timestep_nbr + 1, dtype=torch.float64) / timestep_nbr + cosine_s
+        timesteps = torch.arange(total_timesteps + 1, dtype=torch.float32) / total_timesteps + cosine_s
 
         alphas = timesteps / (1 + cosine_s) * np.pi / 2
         alphas = torch.cos(alphas).pow(2)
@@ -48,14 +48,14 @@ def make_beta_schedule(schedule_type: str,
         betas = 1 - alphas[1:] / alphas[:-1]
         betas = np.clip(betas, a_min=0, a_max=0.999)
     elif schedule_type == 'clipped_cosine':
-        betas = betas_cosine = make_beta_schedule('cosine', timestep_nbr, linear_start, linear_end, cosine_s, to_numpy=False)
+        betas = betas_cosine = make_beta_schedule('cosine', total_timesteps, linear_start, linear_end, cosine_s, to_numpy=False)
         betas = np.clip(betas, a_min=0, a_max=cosine_clip)
     elif schedule_type == "sqrt_linear":
-        betas = torch.linspace(linear_start ** 0.5, linear_end ** 0.5, timestep_nbr, dtype=torch.float64) ** 2
+        betas = torch.linspace(linear_start ** 0.5, linear_end ** 0.5, total_timesteps, dtype=torch.float32) ** 2
     elif schedule_type == "sqrt":
-        betas = torch.linspace(linear_start, linear_end, timestep_nbr, dtype=torch.float64) ** 0.5
+        betas = torch.linspace(linear_start, linear_end, total_timesteps, dtype=torch.float32) ** 0.5
     elif schedule_type == 'log':
-        betas = torch.log(torch.linspace(linear_start, linear_end, timestep_nbr, dtype=torch.float64))
+        betas = torch.log(torch.linspace(linear_start, linear_end, total_timesteps, dtype=torch.float32))
 
         betas_min = torch.abs(torch.min(betas))
         betas_range = torch.abs(torch.max(betas) - torch.min(betas))
@@ -63,13 +63,13 @@ def make_beta_schedule(schedule_type: str,
         betas = (betas + betas_min) / betas_range
         betas = np.clip(betas, a_min=0, a_max=0.999)
     elif schedule_type == 'linear_cosine':
-        betas_cosine = make_beta_schedule('cosine', timestep_nbr, linear_start, linear_end, cosine_s, to_numpy=False)
-        betas_linear = torch.linspace(betas_cosine[0], betas_cosine[-1], len(betas_cosine), dtype=torch.float64)
+        betas_cosine = make_beta_schedule('cosine', total_timesteps, linear_start, linear_end, cosine_s, to_numpy=False)
+        betas_linear = torch.linspace(betas_cosine[0], betas_cosine[-1], len(betas_cosine), dtype=torch.float32)
 
         betas = (betas_cosine + betas_linear) / 2
     elif schedule_type == 'log_cosine':
-        betas_cosine = make_beta_schedule('cosine', timestep_nbr, linear_start, linear_end, cosine_s, to_numpy=False)
-        betas_log = torch.log(torch.linspace(linear_start, linear_end, timestep_nbr, dtype=torch.float64))
+        betas_cosine = make_beta_schedule('cosine', total_timesteps, linear_start, linear_end, cosine_s, to_numpy=False)
+        betas_log = torch.log(torch.linspace(linear_start, linear_end, total_timesteps, dtype=torch.float32))
 
         betas_min = torch.abs(torch.min(betas_log))
         betas_range = torch.abs(torch.max(betas_log) - torch.min(betas_log))
@@ -79,13 +79,15 @@ def make_beta_schedule(schedule_type: str,
 
         betas = (betas_cosine + betas_log) / 2
 
+    if device is not None:
+        betas = betas.to(device)
     return betas.numpy() if to_numpy else betas
 
 
 def make_alpha_from_beta(
         betas: ArrayOrTensor,
-        to_numpy: bool = True,
-        device: str = 'cpu') -> Dict[str, ArrayOrTensor]:
+        to_numpy: bool = False,
+        device: str = None) -> Dict[str, ArrayOrTensor]:
 
     if isinstance(betas, np.ndarray) or isinstance(betas, torch.Tensor):
         module = np if isinstance(betas, np.ndarray) else torch
@@ -106,9 +108,9 @@ def make_alpha_from_beta(
             betas_bar.append(beta_bar)
 
         if isinstance(betas, np.ndarray):
-            betas_bar = np.asarray(beta_bar, dtype=np.float64)  # is this the good type ?
+            betas_bar = np.asarray(beta_bar, dtype=np.float32)  # is this the good type ?
         else:
-            betas_bar = torch.Tensor(betas_bar).type(torch.float64)
+            betas_bar = torch.Tensor(betas_bar).type(torch.float32)
 
         betas_sqrt = module.sqrt(betas)
         betas_bar_sqrt = module.sqrt(betas_bar)
@@ -133,15 +135,15 @@ def make_alpha_from_beta(
         'alphas_bar_sqrt_inverse': alphas_bar_sqrt_inverse,
         'alphas_bar_one_minus': alphas_bar_one_minus,
         'alphas_bar_one_minus_sqrt': alphas_bar_one_minus_sqrt,
-        'alphas_ration': alphas_ratio,
+        'alphas_ratio': alphas_ratio,
         'betas': betas,
         'betas_sqrt': betas_sqrt,
         'betas_bar': betas_bar,
         'betas_bar_sqrt': betas_bar_sqrt,
     }
 
-    if not to_numpy:
+    if not to_numpy and device is not None:
         for parameter in hyperparameters:
-            hyperparameters[parameter].to(device)
+            hyperparameters[parameter] = hyperparameters[parameter].to(device)
 
     return hyperparameters

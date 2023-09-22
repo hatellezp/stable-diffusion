@@ -1,7 +1,12 @@
-# Stable Difussion Personal Implementation
+# Difussion Personal Implementation
 
 
 THIS IS A WIP! Nothing is still of up to use or even read.
+
+We are testing several diffusion methods:
+- ddpm
+- stable diffusion
+- k-diffusion (to come)
 
 ## API
 
