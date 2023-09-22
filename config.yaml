@@ -1,0 +1,10 @@
+dataset: oxford
+batch_size: 32
+img_size: 64
+img_channels: 3
+unet_schedule: [64, 128, 64, 128, 64, 32, 64]
+epochs: 2
+datasets_path: "../../../Datasets"
+checkpoints_path: "../../../Checkpoints"
+total_noising_steps: 200
+model_name: simpleUnet2_oxford

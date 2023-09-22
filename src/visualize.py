@@ -34,13 +34,13 @@ def visualize_noise_adding_methods(
         print(f'Method: {method}')
 
         betas = make_beta_schedule(method, total_timesteps=T, to_numpy=False)
-        hyperparameters = make_alpha_from_beta(betas, to_numpy=False, device=device)
-        print("Hyperparameters created")
+        meanvar = make_alpha_from_beta(betas, to_numpy=False, device=device)
+        print("meanvar created")
 
         for idx in tqdm(range(0, num_images), unit='img'):
             timestep = idx*stepsize
             img, _ = forward_diffusion_ddpm(
-                image, timestep, hyperparameters['alphas_bar_sqrt'], hyperparameters['alphas_bar_one_minus']
+                image, timestep, meanvar['alphas_bar_sqrt'], meanvar['alphas_bar_one_minus']
             )
             show_tensor_image(img, ax=axs[index, idx], show_plot=False)
 
@@ -100,13 +100,13 @@ def visualize_noise_mean_variance_schedules(timesteps: List[int] = None, show_pl
 
         for schedule in schedules:
             betas = make_beta_schedule(schedule, total_timesteps=T)
-            hyperparameters = make_alpha_from_beta(betas)
+            meanvar = make_alpha_from_beta(betas)
 
             axs[idx, 0].plot(l, betas, label=schedule)
-            axs[idx, 1].plot(l, hyperparameters['alphas'], label=schedule)
-            axs[idx, 2].plot(l, hyperparameters['alphas_bar'], label=schedule)
-            axs[idx, 3].plot(l, hyperparameters['alphas_bar_sqrt'], label=schedule)
-            axs[idx, 4].plot(l, hyperparameters['alphas_bar_one_minus'], label=schedule)
+            axs[idx, 1].plot(l, meanvar['alphas'], label=schedule)
+            axs[idx, 2].plot(l, meanvar['alphas_bar'], label=schedule)
+            axs[idx, 3].plot(l, meanvar['alphas_bar_sqrt'], label=schedule)
+            axs[idx, 4].plot(l, meanvar['alphas_bar_one_minus'], label=schedule)
 
 
 

@@ -93,12 +93,15 @@ def make_alpha_from_beta(
         module = np if isinstance(betas, np.ndarray) else torch
 
         alphas = 1. - betas
+        alphas_sqrt_inverse = module.sqrt(alphas)
+        alphas_sqrt_inverse = 1. / alphas_sqrt_inverse
         alphas_bar = module.cumprod(alphas, axis=0)
         alphas_bar_sqrt = module.sqrt(alphas_bar)
         alphas_bar_sqrt_inverse = 1. / alphas_bar_sqrt
         alphas_bar_one_minus = 1. - alphas_bar
         alphas_bar_one_minus_sqrt = module.sqrt(alphas_bar_one_minus)
         alphas_ratio = alphas_bar_one_minus / alphas_bar_one_minus_sqrt
+        betas_ratio = betas / alphas_bar_one_minus_sqrt
 
         # define beta_bar here (from the DDPM paper https://arxiv.org/pdf/2006.11239.pdf)
         # I do not like this... find a better way to create the values
@@ -127,8 +130,10 @@ def make_alpha_from_beta(
         alphas_ratio = alphas_ratio.numpy()
         betas_bar = betas_bar.numpy()
         betas_bar_sqrt = betas_bar_sqrt.numpy()
+        alphas_sqrt_inverse = alphas_sqrt_inverse.numpy()
+        betas_ratio = betas_ratio.numpy()
 
-    hyperparameters = {
+    meanvar = {
         'alphas': alphas,
         'alphas_bar': alphas_bar,
         'alphas_bar_sqrt': alphas_bar_sqrt,
@@ -140,10 +145,12 @@ def make_alpha_from_beta(
         'betas_sqrt': betas_sqrt,
         'betas_bar': betas_bar,
         'betas_bar_sqrt': betas_bar_sqrt,
+        'alphas_sqrt_inverse': alphas_sqrt_inverse,
+        'betas_ratio': betas_ratio,
     }
 
     if not to_numpy and device is not None:
-        for parameter in hyperparameters:
-            hyperparameters[parameter] = hyperparameters[parameter].to(device)
+        for parameter in meanvar:
+            meanvar[parameter] = meanvar[parameter].to(device)
 
-    return hyperparameters
+    return meanvar

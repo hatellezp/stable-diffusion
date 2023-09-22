@@ -119,7 +119,7 @@ class SimpleUnet(nn.Module):
             )
 
         # 2. The initial transformation to enter in the unet is not a
-        #    conventional block
+        #    factory unet block
         self.input_layer = nn.Conv2d(image_channels, self.down_channels[0], 3, padding=1)
 
         # 3. Down trajectory.
@@ -135,7 +135,10 @@ class SimpleUnet(nn.Module):
         ])
 
         # 5. Output layer.
-        self.output_layer = nn.Conv2d(self.up_channels[-1], out_dim, 1)
+        # self.output_layer = nn.Conv2d(self.up_channels[-1], out_dim, 1)
+        self.output_layer = nn.Conv2d(self.up_channels[-1], self.image_channels, 1)
+
+
 
     def forward(self, x, timestep):
 
