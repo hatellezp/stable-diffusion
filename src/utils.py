@@ -6,9 +6,7 @@ import torchvision
 from PIL import Image
 from torch import nn
 from torchvision import transforms
-from typing import Dict, Tuple
-
-from .tensor_types import IntOrTensor
+from typing import Dict, Tuple, Optional
 
 
 def image_from_path_to_tensor(
@@ -80,22 +78,23 @@ def default_tensor_to_image_transform():
 
 def show_tensor_image(
         image: torch.Tensor,
-        reverse_transforms: transforms.Compose = None,
+        reverse_transform: transforms.Compose = None,
         show_plot: bool = True,
         ax=None) -> None:
 
-    if reverse_transforms is None:
-        reverse_transforms = default_tensor_to_image_transform()
+    if reverse_transform is None:
+        reverse_transform = default_tensor_to_image_transform()
 
     # If the image is a batch of images then only take the first.
     if len(image.shape) == 4:
         image = image[0, :, :, :]
+    image = reverse_transform(image)
 
     # Plot following a specific ax if provided.
     if ax is not None:
-        ax.imshow(reverse_transforms(image))
+        ax.imshow(image)
     else:
-        plt.imshow(reverse_transforms(image))
+        plt.imshow(image)
 
     if show_plot:
         plt.show()
@@ -118,22 +117,14 @@ def make_full_noise_sample(
     if iterate and manual_seed:
         for _ in range(iterate - 1): torch.randn(shape)
 
-    return torch.randn(shape, device=device)
+    return torch.randn(shape, device=device, dtype=torch.float32)
 
 
 def get_value_and_reshape(
         values: torch.Tensor,
-        timestep: IntOrTensor,
+        timestep: torch.Tensor,
         sample_shape: Tuple[int, ...],
         device: str = None) -> torch.Tensor:
-
-    if not (isinstance(timestep, int) or isinstance(timestep, torch.Tensor)):
-        raise ValueError(
-            f"Unexpected timestep type, expected int or torch.Tensor, got {type(timestep)}"
-        )
-
-    if isinstance(timestep, int):
-        timestep = torch.Tensor([timestep]).type(torch.int64)
 
     if device is not None:
         values = values.to(device)
@@ -146,23 +137,30 @@ def get_value_and_reshape(
 
 
 def gather_data(dataset: str,
-                dataset_path: str = "../../../Datasets",
+                dataset_path: str,
                 download: bool = True,
-                transform: transforms.Compose = None) -> torch.utils.data.Dataset:
+                separate_test_train: bool = True,
+                transform: Optional[transforms.Compose] = None) -> torch.utils.data.Dataset:
 
-    if dataset == 'oxford':
-        data = torchvision.datasets.OxfordIIITPet(root=dataset_path, download=download, transform=transform)
-    elif dataset == 'cifar10':
-        data = torchvision.datasets.CIFAR10(root=dataset_path, download=download, transform=transform)
-    elif dataset == 'cifar100':
-        data = torchvision.datasets.CIFAR100(root=dataset_path, download=download, transform=transform)
-    elif dataset == 'mnist':
-        data = torchvision.datasets.MNIST(root=dataset_path, download=download, transform=transform)
-    elif dataset == 'fashionmnist':
-        data = torchvision.datasets.FashionMNIST(root=dataset_path, download=download, transform=transform)
-    elif dataset == 'flowers':
-        data = torchvision.datasets.Flowers102(root=dataset_path, download=download, transform=transform)
-    else:
+    dataset_module = {
+        'oxford': torchvision.datasets.OxfordIIITPet,
+        'cifar10': torchvision.datasets.CIFAR10,
+        'cifar100': torchvision.datasets.CIFAR100,
+        'mnist': torchvision.datasets.MNIST,
+        'fashionmnist': torchvision.datasets.FashionMNIST,
+        'flowers': torchvision.datasets.Flowers102,
+    }
+
+    if dataset not in dataset_module:
         raise ValueError(f"Unexpected dataset: {dataset}")
+
+    module_to_load = dataset_module[dataset]
+    if separate_test_train:
+        data = (
+            module_to_load(root=dataset_path, train=True, download=True, transform=transform),
+            module_to_load(root=dataset_path, train=False, download=True, transform=transform)
+        )
+    else:
+        data = module_to_load(root=dataset_path, download=True, transform=transform)
 
     return data

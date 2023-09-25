@@ -3,7 +3,6 @@ import torch
 
 from typing import Dict
 
-from .tensor_types import ArrayOrTensor
 
 SCHEDULE_METHODS = (
     'linear',
@@ -30,8 +29,7 @@ def make_beta_schedule(schedule_type: str,
                        linear_end: float = 2e-2,
                        cosine_s: float = 4e-3,
                        cosine_clip: float = 4e-2,
-                       to_numpy: bool = False,
-                       device: str = None) -> np.ndarray:
+                       device: str = None) -> torch.Tensor:
 
     if schedule_type not in SCHEDULE_METHODS:
         raise ValueError(f"schedule_type '{schedule_type}' unknown.")
@@ -81,25 +79,22 @@ def make_beta_schedule(schedule_type: str,
 
     if device is not None:
         betas = betas.to(device)
-    return betas.numpy() if to_numpy else betas
+    return betas
 
 
 def make_alpha_from_beta(
-        betas: ArrayOrTensor,
-        to_numpy: bool = False,
-        device: str = None) -> Dict[str, ArrayOrTensor]:
+        betas: torch.Tensor,
+        device: str = None) -> Dict[str, torch.Tensor]:
 
-    if isinstance(betas, np.ndarray) or isinstance(betas, torch.Tensor):
-        module = np if isinstance(betas, np.ndarray) else torch
-
+    if isinstance(betas, torch.Tensor):
         alphas = 1. - betas
-        alphas_sqrt_inverse = module.sqrt(alphas)
+        alphas_sqrt_inverse = torch.sqrt(alphas)
         alphas_sqrt_inverse = 1. / alphas_sqrt_inverse
-        alphas_bar = module.cumprod(alphas, axis=0)
-        alphas_bar_sqrt = module.sqrt(alphas_bar)
+        alphas_bar = torch.cumprod(alphas, axis=0)
+        alphas_bar_sqrt = torch.sqrt(alphas_bar)
         alphas_bar_sqrt_inverse = 1. / alphas_bar_sqrt
         alphas_bar_one_minus = 1. - alphas_bar
-        alphas_bar_one_minus_sqrt = module.sqrt(alphas_bar_one_minus)
+        alphas_bar_one_minus_sqrt = torch.sqrt(alphas_bar_one_minus)
         alphas_ratio = alphas_bar_one_minus / alphas_bar_one_minus_sqrt
         betas_ratio = betas / alphas_bar_one_minus_sqrt
 
@@ -110,28 +105,12 @@ def make_alpha_from_beta(
             beta_bar = ((1 - alphas_bar[idx-1]) / (1 - alphas_bar[idx])) * betas[idx]
             betas_bar.append(beta_bar)
 
-        if isinstance(betas, np.ndarray):
-            betas_bar = np.asarray(beta_bar, dtype=np.float32)  # is this the good type ?
-        else:
-            betas_bar = torch.Tensor(betas_bar).type(torch.float32)
+        betas_bar = torch.Tensor(betas_bar).type(torch.float32)
 
-        betas_sqrt = module.sqrt(betas)
-        betas_bar_sqrt = module.sqrt(betas_bar)
+        betas_sqrt = torch.sqrt(betas)
+        betas_bar_sqrt = torch.sqrt(betas_bar)
     else:
-        raise ValueError(f"Incompatible `betas` type, expected numpy.ndarray or torch.Tensor, got {type(betas)}")
-
-    if to_numpy and isinstance(betas, torch.Tensor):
-        alphas = alphas.numpy()
-        alphas_bar = alphas_bar.numpy()
-        alphas_bar_sqrt = alphas_bar_sqrt.numpy()
-        alphas_bar_sqrt_inverse = alphas_bar_sqrt_inverse.numpy()
-        alphas_bar_one_minus = alphas_bar_one_minus.numpy()
-        alphas_bar_one_minus_sqrt = alphas_bar_one_minus_sqrt.numpy()
-        alphas_ratio = alphas_ratio.numpy()
-        betas_bar = betas_bar.numpy()
-        betas_bar_sqrt = betas_bar_sqrt.numpy()
-        alphas_sqrt_inverse = alphas_sqrt_inverse.numpy()
-        betas_ratio = betas_ratio.numpy()
+        raise ValueError(f"Incompatible `betas` type, expected torch.Tensor, got {type(betas)}")
 
     meanvar = {
         'alphas': alphas,
@@ -149,7 +128,7 @@ def make_alpha_from_beta(
         'betas_ratio': betas_ratio,
     }
 
-    if not to_numpy and device is not None:
+    if device is not None:
         for parameter in meanvar:
             meanvar[parameter] = meanvar[parameter].to(device)
 

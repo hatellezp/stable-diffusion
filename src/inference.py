@@ -2,10 +2,8 @@ import matplotlib.pyplot as plt
 import torch
 
 from torch import nn
-from tqdm import tqdm
 from typing import Dict
 
-from .tensor_types import ArrayOrTensor
 from .utils  import get_value_and_reshape, show_tensor_image, make_full_noise_sample
 
 
@@ -14,7 +12,7 @@ def generate_sample_from_noise(
         model: nn.Module,
         xT: torch.Tensor,
         timestep: int,
-        meanvar_schedule: Dict[str, ArrayOrTensor],
+        meanvar_schedule: Dict[str, torch.Tensor],
         variance_choice: int = 1,
         device: str = None) -> torch.Tensor:
 
@@ -52,7 +50,7 @@ def generate_sample_from_noise(
 
 def plot_image_sample(
         model: nn.Module,
-        meanvar_schedule: Dict[str, ArrayOrTensor],
+        meanvar_schedule: Dict[str, torch.Tensor],
         img_size: int,
         img_channels: int,
         total_timesteps: int,

@@ -40,7 +40,7 @@ def visualize_noise_adding_methods(
         for idx in tqdm(range(0, num_images), unit='img'):
             timestep = idx*stepsize
             img, _ = forward_diffusion_ddpm(
-                image, timestep, meanvar['alphas_bar_sqrt'], meanvar['alphas_bar_one_minus']
+                image, timestep, meanvar
             )
             show_tensor_image(img, ax=axs[index, idx], show_plot=False)
 
